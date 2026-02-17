@@ -4,10 +4,10 @@ set -e
 # LTX-2 LoRA Training Bootstrap for RunPod
 #
 # Usage: Start a stock PyTorch pod, then run:
-#   curl -sL https://raw.githubusercontent.com/Armychimp/ltx2-train/main/setup.sh | bash
+#   curl -sL https://raw.githubusercontent.com/Armychimp/ltx2-train-pod-build/main/setup.sh | bash
 #
 # Or set as Container Start Command for auto-start:
-#   bash -c "curl -sL https://raw.githubusercontent.com/Armychimp/ltx2-train/main/setup.sh | bash"
+#   bash -c "curl -sL https://raw.githubusercontent.com/Armychimp/ltx2-train-pod-build/main/setup.sh | bash"
 #
 # Required env vars (set in RunPod pod template):
 #   S3_ENDPOINT_URL, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, HF_TOKEN
@@ -20,7 +20,7 @@ set -e
 
 WORKSPACE="/workspace"
 LTX2_DIR="$WORKSPACE/LTX-2"
-SCRIPT_URL="https://raw.githubusercontent.com/Armychimp/ltx2-train/main/train.py"
+SCRIPT_URL="https://raw.githubusercontent.com/Armychimp/ltx2-train-pod-build/main/train.py"
 
 echo "============================================"
 echo "LTX-2 Training Bootstrap"
