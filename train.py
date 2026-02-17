@@ -232,19 +232,12 @@ def terminate_pod():
             print(f"  {name}: {result}", flush=True)
             return result
 
-    # Try podStop first (stops billing, keeps pod + volume for easy restart)
-    print(f"Stopping pod {pod_id}...", flush=True)
+    print(f"Terminating pod {pod_id}...", flush=True)
     try:
-        run_mutation("podStop", f'mutation {{ podStop(input: {{ podId: "{pod_id}" }}) }}')
+        run_mutation("podTerminate", f'mutation {{ podTerminate(input: {{ podId: "{pod_id}" }}) }}')
     except Exception as e:
-        print(f"  podStop failed: {e}", flush=True)
-        # Fallback to terminate (deletes pod entirely)
-        try:
-            print("  Falling back to podTerminate...", flush=True)
-            run_mutation("podTerminate", f'mutation {{ podTerminate(input: {{ podId: "{pod_id}" }}) }}')
-        except Exception as e2:
-            print(f"  podTerminate also failed: {e2}", flush=True)
-            print("  Please stop the pod manually to avoid charges!", flush=True)
+        print(f"  podTerminate failed: {e}", flush=True)
+        print("  Please terminate the pod manually to avoid charges!", flush=True)
 
 
 # ============================================================================
@@ -397,6 +390,10 @@ def main():
     # ---- Terminate ----
     if do_terminate:
         terminate_pod()
+        # Sleep so the process doesn't exit and trigger a container restart
+        # before the API call takes effect
+        print("Waiting for termination...", flush=True)
+        time.sleep(300)
 
 
 if __name__ == "__main__":
