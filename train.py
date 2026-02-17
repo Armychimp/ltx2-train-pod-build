@@ -207,7 +207,7 @@ def patch_config(config_path, dataset_local, output_dir, model_path, te_path,
 # ============================================================================
 
 def terminate_pod():
-    """Self-terminate this RunPod pod."""
+    """Self-stop this RunPod pod (stops billing, keeps volume data)."""
     import urllib.request
     import json
 
@@ -217,22 +217,34 @@ def terminate_pod():
         print("Cannot self-terminate: missing RUNPOD_API_KEY or RUNPOD_POD_ID", flush=True)
         return
 
-    print(f"Terminating pod {pod_id}...", flush=True)
-    query = f'mutation {{ podTerminate(input: {{ podId: "{pod_id}" }}) }}'
-    req = urllib.request.Request(
-        "https://api.runpod.io/graphql",
-        data=json.dumps({"query": query}).encode(),
-        headers={
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {api_key}",
-        },
-        method="POST",
-    )
-    try:
+    def run_mutation(name, query):
+        req = urllib.request.Request(
+            "https://api.runpod.io/graphql",
+            data=json.dumps({"query": query}).encode(),
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {api_key}",
+            },
+            method="POST",
+        )
         with urllib.request.urlopen(req) as resp:
-            print(f"  Terminate response: {resp.read().decode()}", flush=True)
+            result = resp.read().decode()
+            print(f"  {name}: {result}", flush=True)
+            return result
+
+    # Try podStop first (stops billing, keeps pod + volume for easy restart)
+    print(f"Stopping pod {pod_id}...", flush=True)
+    try:
+        run_mutation("podStop", f'mutation {{ podStop(input: {{ podId: "{pod_id}" }}) }}')
     except Exception as e:
-        print(f"  Terminate failed: {e}", flush=True)
+        print(f"  podStop failed: {e}", flush=True)
+        # Fallback to terminate (deletes pod entirely)
+        try:
+            print("  Falling back to podTerminate...", flush=True)
+            run_mutation("podTerminate", f'mutation {{ podTerminate(input: {{ podId: "{pod_id}" }}) }}')
+        except Exception as e2:
+            print(f"  podTerminate also failed: {e2}", flush=True)
+            print("  Please stop the pod manually to avoid charges!", flush=True)
 
 
 # ============================================================================
