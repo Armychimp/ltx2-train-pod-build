@@ -12,6 +12,7 @@ Config via environment variables:
     RESUME          - "true" to resume from latest S3 checkpoint (default: false)
     STEPS           - Override step count (optional)
     TERMINATE       - "true" to terminate pod when done (default: true)
+    WITH_AUDIO      - "true" to preprocess audio latents (default: false)
 
     S3_ENDPOINT_URL, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY - S3 creds
     HF_TOKEN        - HuggingFace token for model downloads
@@ -252,6 +253,7 @@ def main():
     resume = os.environ.get("RESUME", "false").lower() == "true"
     steps_override = os.environ.get("STEPS")
     do_terminate = os.environ.get("TERMINATE", "true").lower() == "true"
+    with_audio = os.environ.get("WITH_AUDIO", "false").lower() == "true"
 
     if not dataset or not config_name:
         print("ERROR: DATASET and CONFIG environment variables are required.", flush=True)
@@ -266,6 +268,7 @@ def main():
     print(f"  resume:     {resume}", flush=True)
     print(f"  steps:      {steps_override or '(from config)'}", flush=True)
     print(f"  terminate:  {do_terminate}", flush=True)
+    print(f"  with_audio: {with_audio}", flush=True)
     print(f"{'='*60}\n", flush=True)
 
     # ---- Step 1: Models ----
@@ -300,6 +303,8 @@ def main():
             "--text-encoder-path", te_path,
             "--batch-size", "1",
         ]
+        if with_audio:
+            cmd.append("--with-audio")
         print(f"Running: {' '.join(cmd)}", flush=True)
         subprocess.run(cmd, cwd=LTX2_DIR, check=True)
 
@@ -364,12 +369,29 @@ def main():
     stop_sync = start_background_sync(output_dir, output_s3_prefix, interval=60)
 
     try:
-        subprocess.run(
+        result = subprocess.run(
             [LTX2_PYTHON, f"{LTX2_DIR}/packages/ltx-trainer/scripts/train.py",
              config_local, "--disable-progress-bars"],
             cwd=LTX2_DIR,
-            check=True,
+            capture_output=True,
+            text=True,
         )
+        # Print all output so it's visible in RunPod logs
+        if result.stdout:
+            print(result.stdout, flush=True)
+        if result.stderr:
+            print(result.stderr, file=sys.stderr, flush=True)
+        if result.returncode != 0:
+            print(f"\n{'='*60}", flush=True)
+            print(f"TRAINING FAILED (exit code {result.returncode})", flush=True)
+            # Print last 50 lines of stderr for quick diagnosis
+            if result.stderr:
+                lines = result.stderr.strip().split("\n")
+                print("Last stderr lines:", flush=True)
+                for line in lines[-50:]:
+                    print(f"  {line}", flush=True)
+            print(f"{'='*60}\n", flush=True)
+            sys.exit(result.returncode)
     finally:
         stop_sync.set()
         time.sleep(5)  # let background sync finish any in-progress uploads
