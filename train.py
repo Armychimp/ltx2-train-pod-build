@@ -207,8 +207,17 @@ def patch_config(config_path, dataset_local, output_dir, model_path, te_path,
 # POD TERMINATION
 # ============================================================================
 
-def terminate_pod():
-    """Self-stop this RunPod pod (stops billing, keeps volume data)."""
+def detect_provider():
+    """Detect which cloud provider we're running on."""
+    if os.environ.get("RUNPOD_POD_ID"):
+        return "runpod"
+    if os.environ.get("VAST_CONTAINERLABEL") or os.environ.get("CONTAINER_ID"):
+        return "vastai"
+    return None
+
+
+def terminate_runpod():
+    """Self-stop a RunPod pod."""
     import urllib.request
     import json
 
@@ -233,12 +242,54 @@ def terminate_pod():
             print(f"  {name}: {result}", flush=True)
             return result
 
-    print(f"Terminating pod {pod_id}...", flush=True)
+    print(f"Terminating RunPod pod {pod_id}...", flush=True)
     try:
         run_mutation("podTerminate", f'mutation {{ podTerminate(input: {{ podId: "{pod_id}" }}) }}')
     except Exception as e:
         print(f"  podTerminate failed: {e}", flush=True)
         print("  Please terminate the pod manually to avoid charges!", flush=True)
+
+
+def terminate_vastai():
+    """Self-stop a Vast.ai instance."""
+    import urllib.request
+    import json
+
+    api_key = os.environ.get("VAST_API_KEY")
+    instance_id = os.environ.get("CONTAINER_ID") or os.environ.get("VAST_CONTAINERLABEL")
+    if not api_key or not instance_id:
+        print("Cannot self-terminate: missing VAST_API_KEY or CONTAINER_ID", flush=True)
+        return
+
+    print(f"Stopping Vast.ai instance {instance_id}...", flush=True)
+    try:
+        data = json.dumps({"state": "stopped"}).encode()
+        req = urllib.request.Request(
+            f"https://console.vast.ai/api/v0/instances/{instance_id}/",
+            data=data,
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {api_key}",
+            },
+            method="PUT",
+        )
+        with urllib.request.urlopen(req) as resp:
+            result = resp.read().decode()
+            print(f"  Result: {result}", flush=True)
+    except Exception as e:
+        print(f"  Vast.ai stop failed: {e}", flush=True)
+        print("  Please stop the instance manually to avoid charges!", flush=True)
+
+
+def terminate_pod():
+    """Auto-detect provider and self-terminate."""
+    provider = detect_provider()
+    if provider == "runpod":
+        terminate_runpod()
+    elif provider == "vastai":
+        terminate_vastai()
+    else:
+        print("Unknown provider — cannot self-terminate. Stop manually!", flush=True)
 
 
 # ============================================================================
