@@ -420,29 +420,19 @@ def main():
     stop_sync = start_background_sync(output_dir, output_s3_prefix, interval=60)
 
     try:
-        result = subprocess.run(
-            [LTX2_PYTHON, f"{LTX2_DIR}/packages/ltx-trainer/scripts/train.py",
+        proc = subprocess.Popen(
+            [LTX2_PYTHON, "-u", f"{LTX2_DIR}/packages/ltx-trainer/scripts/train.py",
              config_local, "--disable-progress-bars"],
             cwd=LTX2_DIR,
-            capture_output=True,
-            text=True,
+            stdout=sys.stdout,
+            stderr=sys.stderr,
         )
-        # Print all output so it's visible in RunPod logs
-        if result.stdout:
-            print(result.stdout, flush=True)
-        if result.stderr:
-            print(result.stderr, file=sys.stderr, flush=True)
-        if result.returncode != 0:
+        returncode = proc.wait()
+        if returncode != 0:
             print(f"\n{'='*60}", flush=True)
-            print(f"TRAINING FAILED (exit code {result.returncode})", flush=True)
-            # Print last 50 lines of stderr for quick diagnosis
-            if result.stderr:
-                lines = result.stderr.strip().split("\n")
-                print("Last stderr lines:", flush=True)
-                for line in lines[-50:]:
-                    print(f"  {line}", flush=True)
+            print(f"TRAINING FAILED (exit code {returncode})", flush=True)
             print(f"{'='*60}\n", flush=True)
-            sys.exit(result.returncode)
+            sys.exit(returncode)
     finally:
         stop_sync.set()
         time.sleep(5)  # let background sync finish any in-progress uploads
