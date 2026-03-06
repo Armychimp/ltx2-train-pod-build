@@ -40,8 +40,8 @@ LTX2_PYTHON = f"{LTX2_DIR}/.venv/bin/python"
 S3_BUCKET = "training-data"
 S3_PREFIX = "ltx2"
 
-LTX2_REPO = "Lightricks/LTX-2"
-LTX2_MODEL_FILE = "ltx-2-19b-dev.safetensors"
+LTX2_REPO = "Lightricks/LTX-2.3"
+LTX2_MODEL_FILE = "ltx-2.3-22b-dev.safetensors"
 GEMMA_REPO = "google/gemma-3-12b-it-qat-q4_0-unquantized"
 
 
@@ -398,20 +398,7 @@ def main():
     patch_config(config_local, dataset_local, output_dir, model_path, te_path,
                  resume_checkpoint, steps_override)
 
-    # ---- Step 5: Patches ----
-    print("\n=== Step 5: Patches ===", flush=True)
-    patches = {
-        "config.py": f"{LTX2_DIR}/packages/ltx-trainer/src/ltx_trainer/config.py",
-        "trainer.py": f"{LTX2_DIR}/packages/ltx-trainer/src/ltx_trainer/trainer.py",
-    }
-    for filename, dest in patches.items():
-        try:
-            s3.download_file(S3_BUCKET, f"{S3_PREFIX}/patches/{filename}", dest)
-            print(f"  Patched {filename}", flush=True)
-        except Exception:
-            print(f"  No patch for {filename}", flush=True)
-
-    # ---- Step 6: Train ----
+    # ---- Step 5: Train ----
     print(f"\n{'='*60}", flush=True)
     print("Starting training", flush=True)
     print(f"{'='*60}\n", flush=True)
