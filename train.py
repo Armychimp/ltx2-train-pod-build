@@ -398,6 +398,21 @@ def main():
     patch_config(config_local, dataset_local, output_dir, model_path, te_path,
                  resume_checkpoint, steps_override)
 
+    # ---- Step 4b: Patches ----
+    print("\n=== Step 4b: Applying trainer patches from S3 ===", flush=True)
+    trainer_src = f"{LTX2_DIR}/packages/ltx-trainer/src/ltx_trainer"
+    patches = {
+        "config.py": f"{trainer_src}/config.py",
+        "trainer.py": f"{trainer_src}/trainer.py",
+        "gpu_utils.py": f"{trainer_src}/gpu_utils.py",
+    }
+    for filename, dest in patches.items():
+        try:
+            s3.download_file(S3_BUCKET, f"{S3_PREFIX}/patches/{filename}", dest)
+            print(f"  Patched: {filename}", flush=True)
+        except Exception:
+            print(f"  No patch for {filename} (using upstream)", flush=True)
+
     # ---- Step 5: Train ----
     print(f"\n{'='*60}", flush=True)
     print("Starting training", flush=True)
