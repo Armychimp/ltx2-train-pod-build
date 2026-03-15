@@ -305,6 +305,7 @@ def main():
     steps_override = os.environ.get("STEPS")
     do_terminate = os.environ.get("TERMINATE", "true").lower() == "true"
     with_audio = os.environ.get("WITH_AUDIO", "false").lower() == "true"
+    vae_tiling = os.environ.get("VAE_TILING", "false").lower() == "true"
 
     if not dataset or not config_name:
         print("ERROR: DATASET and CONFIG environment variables are required.", flush=True)
@@ -356,6 +357,8 @@ def main():
         ]
         if with_audio:
             cmd.append("--with-audio")
+        if vae_tiling:
+            cmd.append("--vae-tiling")
         print(f"Running: {' '.join(cmd)}", flush=True)
         subprocess.run(cmd, cwd=LTX2_DIR, check=True)
 
