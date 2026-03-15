@@ -242,12 +242,20 @@ def terminate_runpod():
             print(f"  {name}: {result}", flush=True)
             return result
 
-    print(f"Terminating RunPod pod {pod_id}...", flush=True)
+    print(f"Stopping RunPod pod {pod_id}...", flush=True)
     try:
-        run_mutation("podTerminate", f'mutation {{ podTerminate(input: {{ podId: "{pod_id}" }}) }}')
+        # podStop keeps the pod and persistent volume but stops billing
+        # podTerminate would delete everything
+        run_mutation("podStop", f'mutation {{ podStop(input: {{ podId: "{pod_id}" }}) }}')
     except Exception as e:
-        print(f"  podTerminate failed: {e}", flush=True)
-        print("  Please terminate the pod manually to avoid charges!", flush=True)
+        print(f"  podStop failed: {e}", flush=True)
+        try:
+            # Fallback to terminate if stop fails
+            print("  Trying podTerminate as fallback...", flush=True)
+            run_mutation("podTerminate", f'mutation {{ podTerminate(input: {{ podId: "{pod_id}" }}) }}')
+        except Exception as e2:
+            print(f"  podTerminate also failed: {e2}", flush=True)
+            print("  Please stop the pod manually to avoid charges!", flush=True)
 
 
 def terminate_vastai():

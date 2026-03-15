@@ -76,6 +76,13 @@ if [ -n "$DATASET" ] && [ -n "$CONFIG" ]; then
     echo ""
     echo "=== Starting training ==="
     python3 -u "$WORKSPACE/train.py"
+    # If we get here, train.py exited (success, failure, or killed).
+    # Sleep forever to prevent the container from restarting and looping.
+    # The pod will be stopped by train.py's self-terminate, or manually.
+    echo ""
+    echo "Training script exited. Sleeping to prevent container restart loop."
+    echo "Stop the pod manually if it didn't self-terminate."
+    sleep infinity
 else
     echo ""
     echo "============================================"
