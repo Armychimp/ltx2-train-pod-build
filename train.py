@@ -246,7 +246,7 @@ def terminate_runpod():
     try:
         # podStop keeps the pod and persistent volume but stops billing
         # podTerminate would delete everything
-        run_mutation("podStop", f'mutation {{ podStop(input: {{ podId: "{pod_id}" }}) }}')
+        run_mutation("podStop", f'mutation {{ podStop(input: {{ podId: "{pod_id}" }}) {{ id desiredStatus }} }}')
     except Exception as e:
         print(f"  podStop failed: {e}", flush=True)
         try:
